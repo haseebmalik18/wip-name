@@ -2,77 +2,73 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import SwipeCard from '@/components/SwipeCard';
-
-const musicData = [
-  {
-    id: 1,
-    title: "Song Name 1",
-    artist: "Artist Name",
-    genre: "Genre",
-    color: "from-indigo-900 via-purple-900 to-violet-800"
-  },
-  {
-    id: 2,
-    title: "Song Name 2",
-    artist: "Artist Name",
-    genre: "Genre",
-    color: "from-pink-900 via-fuchsia-800 to-purple-900"
-  },
-  {
-    id: 3,
-    title: "Song Name 3",
-    artist: "Artist Name",
-    genre: "Genre",
-    color: "from-slate-900 via-blue-900 to-cyan-900"
-  },
-  {
-    id: 4,
-    title: "Song Name 4",
-    artist: "Artist Name",
-    genre: "Genre",
-    color: "from-emerald-900 via-teal-800 to-green-900"
-  },
-  {
-    id: 5,
-    title: "Song Name 5",
-    artist: "Artist Name",
-    genre: "Genre",
-    color: "from-rose-900 via-red-900 to-orange-900"
-  },
-  {
-    id: 6,
-    title: "Song Name 6",
-    artist: "Artist Name",
-    genre: "Genre",
-    color: "from-gray-900 via-slate-800 to-neutral-900"
-  }
-];
+import { searchTracks, getRandomGenres, type Track } from '@/lib/itunes';
+import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 
 export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [savedTracks, setSavedTracks] = useState<number[]>([]);
   const [showHint, setShowHint] = useState(true);
   const [direction, setDirection] = useState<'up' | 'down'>('down');
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const isScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const {
+    isPlaying,
+    currentTime,
+    duration,
+    loadTrack,
+    togglePlayPause,
+    seek,
+    analyser,
+    pause
+  } = useAudioPlayer();
+
+  useEffect(() => {
+    async function fetchMusic() {
+      setIsLoading(true);
+      const genres = getRandomGenres();
+      const allTracks: Track[] = [];
+
+      for (const genre of genres) {
+        const genreTracks = await searchTracks(genre, 10);
+        allTracks.push(...genreTracks);
+      }
+
+      const shuffled = allTracks.sort(() => Math.random() - 0.5);
+      setTracks(shuffled.slice(0, 30));
+      setIsLoading(false);
+    }
+
+    fetchMusic();
+  }, []);
+
+  useEffect(() => {
+    if (tracks.length > 0 && tracks[currentIndex]) {
+      pause();
+      loadTrack(tracks[currentIndex].previewUrl);
+    }
+  }, [currentIndex, tracks, loadTrack, pause]);
+
   const handleSave = () => {
-    if (!savedTracks.includes(musicData[currentIndex].id)) {
-      setSavedTracks([...savedTracks, musicData[currentIndex].id]);
+    if (tracks[currentIndex] && !savedTracks.includes(tracks[currentIndex].id)) {
+      setSavedTracks([...savedTracks, tracks[currentIndex].id]);
     }
   };
 
   const goToNext = useCallback(() => {
     setDirection('down');
     setCurrentIndex((prev) => {
-      if (prev < musicData.length - 1) {
+      if (prev < tracks.length - 1) {
         return prev + 1;
       }
       return prev;
     });
     setShowHint(false);
-  }, []);
+  }, [tracks.length]);
 
   const goToPrevious = useCallback(() => {
     setDirection('up');
@@ -150,7 +146,18 @@ export default function Home() {
     }
   };
 
-  const currentTrack = musicData[currentIndex];
+  const currentTrack = tracks[currentIndex];
+
+  if (isLoading) {
+    return (
+      <div className="h-screen w-screen bg-black flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-white/60 text-sm tracking-wider uppercase">Loading music...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -179,21 +186,27 @@ export default function Home() {
       </div>
 
       {showHint && currentIndex === 0 && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none animate-pulse">
-          <div className="text-center space-y-4">
-            <svg className="w-10 h-10 text-white/30 mx-auto animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="absolute top-24 left-1/2 -translate-x-1/2 z-30 pointer-events-none animate-pulse">
+          <div className="text-center space-y-3">
+            <p className="text-xs uppercase tracking-widest text-white/50">Scroll to explore</p>
+            <svg className="w-8 h-8 text-white/40 mx-auto animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
             </svg>
-            <p className="text-xs uppercase tracking-widest text-white/40">Scroll to explore</p>
           </div>
         </div>
       )}
 
-      {currentIndex < musicData.length ? (
+      {currentIndex < tracks.length && currentTrack ? (
         <SwipeCard
           track={currentTrack}
           isSaved={savedTracks.includes(currentTrack.id)}
           direction={direction}
+          isPlaying={isPlaying}
+          onPlayPause={togglePlayPause}
+          currentTime={currentTime}
+          duration={duration}
+          onSeek={seek}
+          analyser={analyser}
         />
       ) : (
         <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-black">
@@ -228,7 +241,7 @@ export default function Home() {
       )}
 
       <div className="absolute right-8 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2">
-        {musicData.map((_, index) => (
+        {tracks.map((_, index) => (
           <div
             key={index}
             className={`w-1 rounded-full transition-all ${
