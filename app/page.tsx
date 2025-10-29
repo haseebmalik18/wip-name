@@ -4,10 +4,14 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import SwipeCard from '@/components/SwipeCard';
 import { searchTracks, getRandomGenres, type Track } from '@/lib/itunes';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
+import { useFavorites } from '@/hooks/useFavorites';
+import Link from 'next/link';
 
 export default function Home() {
+  // Temporary user ID - in production, this would come from authentication
+  const userId = 'demo-user-123';
+  
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [savedTracks, setSavedTracks] = useState<number[]>([]);
   const [showHint, setShowHint] = useState(true);
   const [direction, setDirection] = useState<'up' | 'down'>('down');
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -15,6 +19,9 @@ export default function Home() {
   const isScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // MongoDB-backed favorites
+  const { favorites, addFavorite, removeFavorite, isFavorite } = useFavorites(userId);
 
   const {
     isPlaying,
@@ -53,9 +60,16 @@ export default function Home() {
     }
   }, [currentIndex, tracks, loadTrack, pause]);
 
-  const handleSave = () => {
-    if (tracks[currentIndex] && !savedTracks.includes(tracks[currentIndex].id)) {
-      setSavedTracks([...savedTracks, tracks[currentIndex].id]);
+  const handleSave = async () => {
+    const currentTrack = tracks[currentIndex];
+    if (!currentTrack) return;
+
+    if (isFavorite(currentTrack.id)) {
+      // Remove from favorites
+      await removeFavorite(currentTrack.id);
+    } else {
+      // Add to favorites
+      await addFavorite(currentTrack);
     }
   };
 
@@ -173,14 +187,28 @@ export default function Home() {
           Discover
         </h1>
         <div className="flex items-center gap-4">
+          {/* Favorites Button */}
+          <Link
+            href="/favorites"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 transition-all"
+          >
+            <svg className="w-4 h-4 text-white/60" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+            </svg>
+            <span className="text-white/60 text-sm font-light">{favorites.length}</span>
+          </Link>
+
+          {/* Save Current Track Button */}
           <button
             onClick={handleSave}
             className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 transition-all"
           >
-            <svg className="w-4 h-4 text-white/60" fill={savedTracks.includes(currentTrack?.id) ? "currentColor" : "none"} stroke="currentColor" strokeWidth={savedTracks.includes(currentTrack?.id) ? 0 : 2} viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-white/60" fill={isFavorite(currentTrack?.id) ? "currentColor" : "none"} stroke="currentColor" strokeWidth={isFavorite(currentTrack?.id) ? 0 : 2} viewBox="0 0 24 24">
               <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
             </svg>
-            <span className="text-white/60 text-sm font-light">{savedTracks.length}</span>
+            <span className="text-white/60 text-sm font-light">
+              {isFavorite(currentTrack?.id) ? 'Saved' : 'Save'}
+            </span>
           </button>
         </div>
       </div>
@@ -199,7 +227,7 @@ export default function Home() {
       {currentIndex < tracks.length && currentTrack ? (
         <SwipeCard
           track={currentTrack}
-          isSaved={savedTracks.includes(currentTrack.id)}
+          isSaved={isFavorite(currentTrack.id)}
           direction={direction}
           isPlaying={isPlaying}
           onPlayPause={togglePlayPause}
@@ -222,14 +250,13 @@ export default function Home() {
                 That&apos;s everything
               </h2>
               <p className="text-white/40 text-sm font-light tracking-wide">
-                {savedTracks.length} {savedTracks.length === 1 ? 'track' : 'tracks'} saved to your collection
+                {favorites.length} {favorites.length === 1 ? 'track' : 'tracks'} saved to your collection
               </p>
             </div>
 
             <button
               onClick={() => {
                 setCurrentIndex(0);
-                setSavedTracks([]);
                 setShowHint(true);
               }}
               className="px-8 py-3 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-full font-light hover:bg-white/20 transition-all text-sm tracking-wider uppercase"
