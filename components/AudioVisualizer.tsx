@@ -9,7 +9,7 @@ interface AudioVisualizerProps {
 
 export default function AudioVisualizer({ analyser, isPlaying }: AudioVisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationFrameRef = useRef<number>();
+  const animationFrameRef = useRef<number | undefined>(undefined);
   const phaseRef = useRef(0);
 
   useEffect(() => {
@@ -31,31 +31,31 @@ export default function AudioVisualizer({ analyser, isPlaying }: AudioVisualizer
 
       analyser.getByteFrequencyData(dataArray);
 
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      phaseRef.current += 0.006;
+      phaseRef.current += 0.005;
 
       const avgValue = dataArray.reduce((a, b) => a + b, 0) / bufferLength / 255;
 
-      ctx.filter = 'blur(8px)';
+      ctx.filter = 'blur(12px)';
 
       const numWaves = 3;
       for (let wave = 0; wave < numWaves; wave++) {
         const waveY = canvas.height * (0.3 + wave * 0.25);
-        const amplitude = 80 - wave * 20;
-        const frequency = 0.002 + wave * 0.0005;
-        const alpha = 0.08 - wave * 0.02;
+        const amplitude = 100 - wave * 25;
+        const frequency = 0.003 + wave * 0.0008;
+        const alpha = 0.1 - wave * 0.025;
 
         ctx.beginPath();
 
-        for (let x = 0; x < canvas.width; x += 5) {
+        for (let x = 0; x < canvas.width; x += 4) {
           const dataIndex = Math.floor((x / canvas.width) * bufferLength);
           const value = dataArray[dataIndex] / 255;
 
-          const noise = Math.sin(x * 0.01 + phaseRef.current * 2) * 10;
-          const baseY = waveY + Math.sin(x * frequency + phaseRef.current) * amplitude * 0.5 + noise;
-          const y = baseY + value * amplitude * 0.8;
+          const noise = Math.sin(x * 0.008 + phaseRef.current * 1.5) * 8;
+          const baseY = waveY + Math.sin(x * frequency + phaseRef.current) * amplitude * 0.3 + noise;
+          const y = baseY + value * amplitude * 1.8;
 
           if (x === 0) {
             ctx.moveTo(x, y);

@@ -3,20 +3,28 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function LoginPage() {
   const router = useRouter()
+  const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setError('')
 
-    setTimeout(() => {
+    try {
+      await login(email, password)
       router.push('/')
-    }, 800)
+    } catch (err: any) {
+      setError(err.message || 'Failed to login')
+      setLoading(false)
+    }
   }
 
   return (
@@ -32,6 +40,12 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {error && (
+            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/50 text-red-400 text-sm">
+              {error}
+            </div>
+          )}
+
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/80">
               Email
@@ -82,12 +96,6 @@ export default function LoginPage() {
               Sign up
             </Link>
           </p>
-        </div>
-
-        <div className="mt-8 text-center">
-          <Link href="/" className="text-white/40 hover:text-white/60 text-sm transition-colors">
-            ← Back to home
-          </Link>
         </div>
       </div>
     </div>

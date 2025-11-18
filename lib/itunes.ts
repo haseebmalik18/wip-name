@@ -8,6 +8,7 @@ export interface Track {
   albumName: string;
   releaseDate: string;
   trackTimeMillis: number;
+  addedAt?: string;
 }
 
 export async function searchTracks(term: string = 'pop', limit: number = 30): Promise<Track[]> {

@@ -5,11 +5,14 @@ import SwipeCard from '@/components/SwipeCard';
 import { searchTracks, getRandomGenres, type Track } from '@/lib/itunes';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import { useFavorites } from '@/hooks/useFavorites';
+import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
-  // Temporary user ID - in production, this would come from authentication
-  const userId = 'demo-user-123';
+  const router = useRouter();
+  const { user, loading: authLoading, logout } = useAuth();
+  const userId = user?.id || '';
   
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showHint, setShowHint] = useState(true);
@@ -160,17 +163,29 @@ export default function Home() {
     }
   };
 
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [authLoading, user, router]);
+
   const currentTrack = tracks[currentIndex];
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="h-screen w-screen bg-black flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-white/60 text-sm tracking-wider uppercase">Loading music...</p>
+          <p className="text-white/60 text-sm tracking-wider uppercase">
+            {authLoading ? 'Loading...' : 'Loading music...'}
+          </p>
         </div>
       </div>
     );
+  }
+
+  if (!user) {
+    return null;
   }
 
   return (
@@ -183,9 +198,14 @@ export default function Home() {
       <div className="absolute inset-0 bg-gradient-radial from-transparent via-transparent to-black/50 pointer-events-none z-10" />
 
       <div className="absolute top-0 left-0 right-0 z-20 p-6 flex items-center justify-between backdrop-blur-sm bg-black/20">
-        <h1 className="text-white/90 text-xs font-light tracking-widest uppercase">
-          Discover
-        </h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-white/90 text-xs font-light tracking-widest uppercase">
+            Discover
+          </h1>
+          <span className="text-white/40 text-xs">
+            {user.fullName}
+          </span>
+        </div>
         <div className="flex items-center gap-4">
           {/* Favorites Button */}
           <Link
@@ -209,6 +229,16 @@ export default function Home() {
             <span className="text-white/60 text-sm font-light">
               {isFavorite(currentTrack?.id) ? 'Saved' : 'Save'}
             </span>
+          </button>
+
+          <button
+            onClick={() => {
+              logout();
+              router.push('/login');
+            }}
+            className="px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white/60 hover:bg-white/20 hover:text-white transition-all text-sm font-light"
+          >
+            Logout
           </button>
         </div>
       </div>

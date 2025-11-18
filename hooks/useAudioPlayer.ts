@@ -44,8 +44,8 @@ export function useAudioPlayer() {
     if (audioRef.current && !audioContextRef.current) {
       audioContextRef.current = new AudioContext();
       analyserRef.current = audioContextRef.current.createAnalyser();
-      analyserRef.current.fftSize = 256;
-      analyserRef.current.smoothingTimeConstant = 0.8;
+      analyserRef.current.fftSize = 512;
+      analyserRef.current.smoothingTimeConstant = 0.3;
 
       sourceRef.current = audioContextRef.current.createMediaElementSource(audioRef.current);
       sourceRef.current.connect(analyserRef.current);

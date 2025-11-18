@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
+import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -20,15 +21,20 @@ interface Track {
 }
 
 export default function FavoritesPage() {
-  // Temporary user ID - same as main page
-  const userId = 'demo-user-123';
   const router = useRouter();
+  const { user, loading: authLoading, logout } = useAuth();
+  const userId = user?.id || '';
   
   const { favorites, removeFavorite, isLoading, error, refreshFavorites } = useFavorites(userId);
   const { isPlaying, currentTime, duration, loadTrack, togglePlayPause, seek } = useAudioPlayer();
   const [playingTrackId, setPlayingTrackId] = useState<number | null>(null);
 
-  // Refresh favorites when page becomes visible
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [authLoading, user, router]);
+
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
@@ -68,15 +74,21 @@ export default function FavoritesPage() {
     return new Date(dateString).toLocaleDateString();
   };
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white/60">Loading your favorites...</p>
+          <p className="text-white/60">
+            {authLoading ? 'Loading...' : 'Loading your favorites...'}
+          </p>
         </div>
       </div>
     );
+  }
+
+  if (!user) {
+    return null;
   }
 
   if (error) {
@@ -98,8 +110,8 @@ export default function FavoritesPage() {
       <div className="sticky top-0 z-10 bg-black/80 backdrop-blur-sm border-b border-white/10">
         <div className="px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link 
-              href="/" 
+            <Link
+              href="/"
               className="text-white/60 hover:text-white transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -107,6 +119,9 @@ export default function FavoritesPage() {
               </svg>
             </Link>
             <h1 className="text-white text-xl font-light">My Favorites</h1>
+            <span className="text-white/40 text-sm">
+              {user.fullName}
+            </span>
           </div>
           <div className="flex items-center gap-4">
             <button
@@ -121,6 +136,15 @@ export default function FavoritesPage() {
             <div className="text-white/60 text-sm">
               {favorites.length} {favorites.length === 1 ? 'track' : 'tracks'}
             </div>
+            <button
+              onClick={() => {
+                logout();
+                router.push('/login');
+              }}
+              className="px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white/60 hover:bg-white/20 hover:text-white transition-all text-sm font-light"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </div>
