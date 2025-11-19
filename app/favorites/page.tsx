@@ -17,7 +17,7 @@ interface Track {
   albumName: string;
   releaseDate: string;
   trackTimeMillis: number;
-  addedAt: string;
+  addedAt?: string;
 }
 
 export default function FavoritesPage() {
@@ -198,7 +198,7 @@ export default function FavoritesPage() {
                 {/* Track Details */}
                 <div className="text-right text-white/40 text-sm">
                   <div className="mb-1">{formatDuration(track.trackTimeMillis)}</div>
-                  <div className="text-xs">Added {formatDate(track.addedAt)}</div>
+                  {track.addedAt && <div className="text-xs">Added {formatDate(track.addedAt)}</div>}
                 </div>
 
                 {/* Actions */}

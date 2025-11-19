@@ -43,7 +43,7 @@ export async function addUserFavorite(userId: string, track: Omit<UserFavorite, 
     // Check if track is already favorited
     const existingUser = await db.collection<User>('users').findOne({
       userId,
-      'favorites.trackId': track.id
+      'favorites.trackId': track.trackId
     });
     
     if (existingUser) {
@@ -110,21 +110,33 @@ export async function isTrackFavorite(userId: string, trackId: number): Promise<
 }
 
 export async function updateUserPreferences(
-  userId: string, 
+  userId: string,
   preferences: Partial<User['preferences']>
 ): Promise<boolean> {
   try {
     const db = await getDatabase();
+
+    // Build the $set object with only the provided preference fields
+    const updateFields: any = {
+      updatedAt: new Date()
+    };
+
+    if (preferences.favoriteGenres !== undefined) {
+      updateFields['preferences.favoriteGenres'] = preferences.favoriteGenres;
+    }
+
+    if (preferences.discoveryMode !== undefined) {
+      updateFields['preferences.discoveryMode'] = preferences.discoveryMode;
+    }
+
     const result = await db.collection<User>('users').updateOne(
       { userId },
-      { 
-        $set: { 
-          'preferences': preferences,
-          updatedAt: new Date()
-        },
-        $setOnInsert: { 
-          userId, 
+      {
+        $set: updateFields,
+        $setOnInsert: {
+          userId,
           favorites: [],
+          preferences: { favoriteGenres: [], discoveryMode: 'random' },
           createdAt: new Date(),
         }
       },

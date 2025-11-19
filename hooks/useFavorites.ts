@@ -10,6 +10,7 @@ interface Track {
   albumName: string;
   releaseDate: string;
   trackTimeMillis: number;
+  addedAt?: string; // Optional for when adding new favorites
 }
 
 interface UseFavoritesReturn {

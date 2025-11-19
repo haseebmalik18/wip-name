@@ -11,7 +11,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    const favorites = await getUserFavorites(userId);
+    const userFavorites = await getUserFavorites(userId);
+
+    // Transform UserFavorite to Track format (trackId -> id, Date -> string)
+    const favorites = userFavorites.map(fav => ({
+      id: fav.trackId,
+      title: fav.title,
+      artist: fav.artist,
+      genre: fav.genre,
+      previewUrl: fav.previewUrl,
+      artworkUrl: fav.artworkUrl,
+      albumName: fav.albumName,
+      releaseDate: fav.releaseDate,
+      trackTimeMillis: fav.trackTimeMillis,
+      addedAt: fav.addedAt instanceof Date ? fav.addedAt.toISOString() : fav.addedAt,
+    }));
+
     return NextResponse.json({ favorites });
   } catch (error) {
     console.error('Error fetching favorites:', error);
@@ -29,8 +44,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User ID and track are required' }, { status: 400 });
     }
 
-    const success = await addUserFavorite(userId, track);
-    
+    // Transform Track to UserFavorite format (id -> trackId)
+    const userFavorite = {
+      trackId: track.id,
+      title: track.title,
+      artist: track.artist,
+      genre: track.genre,
+      previewUrl: track.previewUrl,
+      artworkUrl: track.artworkUrl,
+      albumName: track.albumName,
+      releaseDate: track.releaseDate,
+      trackTimeMillis: track.trackTimeMillis,
+    };
+
+    const success = await addUserFavorite(userId, userFavorite);
+
     if (success) {
       return NextResponse.json({ success: true, message: 'Track added to favorites' });
     } else {
