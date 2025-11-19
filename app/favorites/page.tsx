@@ -169,9 +169,9 @@ export default function FavoritesPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {favorites.map((track) => (
+            {favorites.map((track, index) => (
               <div 
-                key={track.id}
+                key={`${track.id}-${index}`}
                 className="flex items-center gap-4 p-4 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all"
               >
                 {/* Album Artwork */}
