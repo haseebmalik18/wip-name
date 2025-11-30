@@ -12,11 +12,14 @@ export async function createUser(userData: Omit<User, '_id' | 'createdAt'>): Pro
     throw new Error('User with this email already exists');
   }
 
+  // Default to all genres (Any Genre - Surprise me!)
+  const ALL_GENRES = ["Pop", "Hip-Hop/Rap", "Rock", "Electronic", "R&B/Soul", "Alternative", "Dance", "Indie", "Latin", "Country"];
+
   const newUser: User = {
     ...userData,
-    surveyCompleted: false,  
-    favoriteGenres: [],    
-    theme: 'default',      
+    surveyCompleted: false,
+    favoriteGenres: ALL_GENRES,
+    theme: 'default',
     createdAt: new Date(),
   };
 

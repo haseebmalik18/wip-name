@@ -16,6 +16,7 @@ const THEMES = [
   { id: "sunset", name: "Sunset", from: "from-orange-900/20", to: "to-red-900/20" },
   { id: "forest", name: "Forest", from: "from-green-900/20", to: "to-emerald-900/20" },
   { id: "midnight", name: "Midnight", from: "from-slate-900/20", to: "to-indigo-900/20" },
+  { id: "abyss", name: "Abyss", from: "from-neutral-950/30", to: "to-stone-950/30" },
 ];
 
 export default function SettingsPage() {
@@ -32,11 +33,13 @@ export default function SettingsPage() {
       router.push('/login');
     }
     if (user) {
-      if (user.favoriteGenres?.length === GENRES.length) {
+      // If user has all genres OR no genres (new user), show "Any Genre - Surprise me!"
+      if (user.favoriteGenres?.length === GENRES.length || user.favoriteGenres?.length === 0) {
         setSelectAny(true);
         setSelectedGenres([]);
       } else {
         setSelectedGenres(user.favoriteGenres || []);
+        setSelectAny(false);
       }
       setSelectedTheme(user.theme || "default");
     }

@@ -26,6 +26,8 @@ const GENRE_IDS: Record<string, number> = {
 
 const POPULAR_GENRES = ['Pop', 'Hip-Hop/Rap', 'Electronic', 'R&B/Soul', 'Alternative', 'Dance'];
 
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export async function getTopChartsByGenre(genreName: string, limit: number = 10): Promise<Track[]> {
   try {
     const genreId = GENRE_IDS[genreName];
@@ -33,52 +35,47 @@ export async function getTopChartsByGenre(genreName: string, limit: number = 10)
       return [];
     }
 
+    const chartLimit = Math.min(100, Math.max(limit * 3, 30));
     const response = await fetch(
-      `https://itunes.apple.com/us/rss/topsongs/limit=${limit}/genre=${genreId}/json`
+      `https://itunes.apple.com/us/rss/topsongs/limit=${chartLimit}/genre=${genreId}/json`
     );
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch top charts for ${genreName}`);
+      return [];
     }
 
     const data = await response.json();
-    const entries = data.feed?.entry || [];
+    let entries = data.feed?.entry || [];
 
-    const tracksWithDetails = await Promise.all(
-      entries.map(async (entry: any) => {
-        try {
-          const trackId = entry.id.attributes['im:id'];
-          const detailResponse = await fetch(
-            `https://itunes.apple.com/lookup?id=${trackId}`
-          );
-          const detailData = await detailResponse.json();
-          const detail = detailData.results?.[0];
+    entries = entries.sort(() => Math.random() - 0.5).slice(0, limit);
 
-          if (!detail?.previewUrl) {
-            return null;
-          }
+    const tracks = entries.map((entry: any) => {
+      try {
+        const trackId = entry.id.attributes['im:id'];
+        const previewUrl = entry.link?.find((link: any) => link.attributes?.type === 'audio/x-m4a')?.attributes?.href;
 
-          return {
-            id: parseInt(trackId),
-            title: entry['im:name'].label,
-            artist: entry['im:artist'].label,
-            genre: genreName,
-            previewUrl: detail.previewUrl,
-            artworkUrl: entry['im:image']?.[2]?.label?.replace('170x170', '600x600') || entry['im:image']?.[2]?.label || '',
-            albumName: entry['im:collection']?.['im:name']?.label || entry['im:name'].label,
-            releaseDate: entry['im:releaseDate']?.attributes?.label || '',
-            trackTimeMillis: detail.trackTimeMillis || 0,
-          };
-        } catch (error) {
-          console.error('Error fetching track details:', error);
+        if (!previewUrl) {
           return null;
         }
-      })
-    );
 
-    return tracksWithDetails.filter((track): track is Track => track !== null);
+        return {
+          id: parseInt(trackId),
+          title: entry['im:name'].label,
+          artist: entry['im:artist'].label,
+          genre: genreName,
+          previewUrl: previewUrl,
+          artworkUrl: entry['im:image']?.[2]?.label?.replace('170x170', '600x600') || entry['im:image']?.[2]?.label || '',
+          albumName: entry['im:collection']?.['im:name']?.label || entry['im:name'].label,
+          releaseDate: entry['im:releaseDate']?.attributes?.label || '',
+          trackTimeMillis: 30000,
+        };
+      } catch (error) {
+        return null;
+      }
+    });
+
+    return tracks.filter((track: Track | null): track is Track => track !== null);
   } catch (error) {
-    console.error(`Error fetching top charts for ${genreName}:`, error);
     return [];
   }
 }
@@ -87,7 +84,7 @@ export function getTrendingGenres(): string[] {
   return POPULAR_GENRES.sort(() => Math.random() - 0.5).slice(0, 3);
 }
 
-export async function getPopularClassics(genreName: string, limit: number = 10): Promise<Track[]> {
+export async function getPopularClassics(genreName: string, limit: number = 10, randomize: boolean = true): Promise<Track[]> {
   try {
     const genreId = GENRE_IDS[genreName];
     if (!genreId) {
@@ -95,12 +92,16 @@ export async function getPopularClassics(genreName: string, limit: number = 10):
     }
 
     const popularArtists: Record<string, string[]> = {
-      'Pop': ['ariana grande', 'billie eilish', 'dua lipa', 'the weeknd', 'ed sheeran'],
-      'Hip-Hop/Rap': ['drake', 'kendrick lamar', 'travis scott', 'post malone', 'kanye west'],
-      'Electronic': ['calvin harris', 'marshmello', 'david guetta', 'kygo', 'zedd'],
-      'R&B/Soul': ['sza', 'frank ocean', 'the weeknd', 'summer walker', 'jhene aiko'],
-      'Alternative': ['imagine dragons', 'twenty one pilots', 'arctic monkeys', 'tame impala', 'glass animals'],
-      'Dance': ['daft punk', 'disclosure', 'deadmau5', 'swedish house mafia', 'eric prydz'],
+      'Pop': ['ariana grande', 'billie eilish', 'dua lipa', 'the weeknd', 'olivia rodrigo', 'taylor swift', 'sabrina carpenter', 'tate mcrae', 'gracie abrams', 'chappell roan', 'reneé rapp', 'madison beer', 'charli xcx', 'troye sivan', 'lana del rey'],
+      'Hip-Hop/Rap': ['drake', 'travis scott', 'playboi carti', 'lil uzi vert', 'future', '21 savage', 'metro boomin', 'don toliver', 'yeat', 'destroy lonely', 'central cee', 'dave', 'ken carson', 'baby keem', 'lil tecca', 'skilla baby', 'nardo wick', 'luh tyler'],
+      'Electronic': ['calvin harris', 'marshmello', 'david guetta', 'kygo', 'zedd', 'skrillex', 'martin garrix', 'alesso', 'timmy trumpet', 'diplo', 'illenium', 'subtronics'],
+      'R&B/Soul': ['sza', 'frank ocean', 'the weeknd', 'summer walker', 'brent faiyaz', 'jhene aiko', 'partynextdoor', 'daniel caesar', 'steve lacy', 'omar apollo', 'kali uchis', 'victoria monet'],
+      'Alternative': ['arctic monkeys', 'the 1975', 'tame impala', 'glass animals', 'wallows', 'the neighbourhood', 'boygenius', 'phoebe bridgers', 'cigarettes after sex', 'bad omens', 'sleep token'],
+      'Dance': ['disclosure', 'fred again', 'odesza', 'rufus du sol', 'kaytranada', 'flume', 'john summit', 'fisher', 'chris lake', 'eli brown', 'mau p'],
+      'Rock': ['foo fighters', 'the killers', 'royal blood', 'nothing but thieves', 'highly suspect', 'greta van fleet'],
+      'Country': ['morgan wallen', 'luke combs', 'zach bryan', 'jelly roll', 'hardy', 'parker mccollum'],
+      'Latin': ['bad bunny', 'peso pluma', 'karol g', 'feid', 'rauw alejandro', 'myke towers'],
+      'Indie': ['the last dinner party', 'wet leg', 'beabadoobee', 'clairo', 'boy pablo', 'rex orange county', 'faye webster', 'mitski', 'girl in red', 'mxmtoon', 'conan gray'],
     };
 
     const artists = popularArtists[genreName] || [];
@@ -108,21 +109,44 @@ export async function getPopularClassics(genreName: string, limit: number = 10):
       return [];
     }
 
-    const randomArtist = artists[Math.floor(Math.random() * artists.length)];
-    
-    const response = await fetch(
-      `https://itunes.apple.com/search?term=${encodeURIComponent(randomArtist)}&media=music&entity=song&limit=${limit * 2}`
-    );
+    const numArtists = Math.min(Math.ceil(limit / 3), artists.length);
+    const tracksPerArtist = Math.ceil(limit / numArtists);
 
-    if (!response.ok) {
-      return [];
+    const shuffledArtists = [...artists].sort(() => Math.random() - 0.5);
+    const selectedArtists = shuffledArtists.slice(0, numArtists);
+
+    const allTracks: any[] = [];
+
+    for (const artist of selectedArtists) {
+      await delay(50);
+
+      const response = await fetch(
+        `https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&media=music&entity=song&limit=50`
+      );
+
+      if (!response.ok) {
+        continue;
+      }
+
+      const data = await response.json();
+
+      const availableTracks = data.results.filter((item: any) => item.previewUrl);
+
+      let selectedTracks;
+      if (randomize) {
+        selectedTracks = availableTracks
+          .sort(() => Math.random() - 0.5)
+          .slice(0, tracksPerArtist);
+      } else {
+        selectedTracks = availableTracks
+          .sort((a: any, b: any) => (b.trackViewCount || 0) - (a.trackViewCount || 0))
+          .slice(0, tracksPerArtist);
+      }
+
+      allTracks.push(...selectedTracks);
     }
 
-    const data = await response.json();
-
-    const tracks = data.results
-      .filter((item: any) => item.previewUrl)
-      .sort((a: any, b: any) => (b.trackViewCount || 0) - (a.trackViewCount || 0))
+    const tracks = allTracks
       .slice(0, limit)
       .map((item: any) => ({
         id: item.trackId,
@@ -137,8 +161,7 @@ export async function getPopularClassics(genreName: string, limit: number = 10):
       }));
 
     return tracks;
-  } catch (error) {
-    console.error(`Error fetching classics for ${genreName}:`, error);
+  } catch {
     return [];
   }
 }

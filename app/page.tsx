@@ -15,6 +15,7 @@ const THEMES: Record<string, { from: string; to: string }> = {
   sunset: { from: "from-orange-900/20", to: "to-red-900/20" },
   forest: { from: "from-green-900/20", to: "to-emerald-900/20" },
   midnight: { from: "from-slate-900/20", to: "to-indigo-900/20" },
+  abyss: { from: "from-neutral-950/30", to: "to-stone-950/30" },
 };
 
 export default function Home() {
@@ -48,28 +49,26 @@ export default function Home() {
 
   const fetchMoreTracks = useCallback(async () => {
   if (isFetchingMore || !user) return;
-  
+
   setIsFetchingMore(true);
-  
-  const genres = user.favoriteGenres?.length > 0 
-    ? user.favoriteGenres 
+
+  const userGenres = user.favoriteGenres?.length > 0
+    ? user.favoriteGenres
     : getTrendingGenres();
-  
-  const shuffledGenres = [...genres].sort(() => Math.random() - 0.5).slice(0, 3);
-  
+
+  const genresToFetch = userGenres.length > 3
+    ? [...userGenres].sort(() => Math.random() - 0.5).slice(0, 3)
+    : userGenres;
+
   const allTracks: Track[] = [];
 
-  for (const genre of shuffledGenres) {
-    const shouldFetchClassics = Math.random() > 0.5;
-    
-    if (shouldFetchClassics) {
-      const classics = await getPopularClassics(genre, 5);
-      const trending = await getTopChartsByGenre(genre, 5);
-      allTracks.push(...classics, ...trending);
-    } else {
-      const genreTracks = await getTopChartsByGenre(genre, 10);
-      allTracks.push(...genreTracks);
-    }
+  for (const genre of genresToFetch) {
+    const [classics, trending] = await Promise.all([
+      getPopularClassics(genre, 23, false),
+      getTopChartsByGenre(genre, 27),
+    ]);
+
+    allTracks.push(...classics, ...trending);
   }
 
   setTracks(prev => {
@@ -90,18 +89,25 @@ export default function Home() {
   useEffect(() => {
   async function fetchMusic() {
     if (!user) return;
-    
+
     setIsLoading(true);
-    
-    const genres = user.favoriteGenres?.length > 0 
-      ? user.favoriteGenres 
+
+    const userGenres = user.favoriteGenres?.length > 0
+      ? user.favoriteGenres
       : getTrendingGenres();
-    
+
+    const genresToFetch = userGenres.length > 3
+      ? [...userGenres].sort(() => Math.random() - 0.5).slice(0, 3)
+      : userGenres;
+
     const allTracks: Track[] = [];
 
-    for (const genre of genres) {
-      const classics = await getPopularClassics(genre, 5);
-      const trending = await getTopChartsByGenre(genre, 5);
+    for (const genre of genresToFetch) {
+      const [classics, trending] = await Promise.all([
+        getPopularClassics(genre, 23, false),
+        getTopChartsByGenre(genre, 27),
+      ]);
+
       allTracks.push(...classics, ...trending);
     }
 
@@ -113,7 +119,7 @@ export default function Home() {
     });
 
     const shuffled = uniqueTracks.sort(() => Math.random() - 0.5);
-    setTracks(shuffled.slice(0, 30));
+    setTracks(shuffled);
     setIsLoading(false);
   }
 
@@ -128,13 +134,17 @@ export default function Home() {
 
   useEffect(() => {
     if (tracks.length > 0 && tracks[currentIndex]) {
-      pause();
-      loadTrack(tracks[currentIndex].previewUrl);
-      const timer = setTimeout(() => {
-        play();
-      }, 100);
-      
-      return () => clearTimeout(timer);
+      const loadAndPlay = async () => {
+        // Pause current track
+        pause();
+        // Load new track
+        loadTrack(tracks[currentIndex].previewUrl);
+        // Wait a bit for track to load
+        await new Promise(resolve => setTimeout(resolve, 150));
+        // Auto-play (will be blocked on first load until user interacts, then works)
+        await play();
+      };
+      loadAndPlay();
     }
   }, [currentIndex, tracks, loadTrack, pause, play]);
 

@@ -34,6 +34,11 @@ const THEME_COLORS: Record<string, { primary: number[]; secondary: number[]; ter
     secondary: [99, 102, 241],  // indigo
     tertiary: [49, 46, 129],    // dark indigo
   },
+  abyss: {
+    primary: [64, 64, 64],      // very dark gray
+    secondary: [38, 38, 38],    // darker gray
+    tertiary: [20, 20, 20],     // near black
+  },
 };
 
 export default function AudioVisualizer({ analyser, isPlaying, theme = 'default' }: AudioVisualizerProps) {

@@ -10,6 +10,16 @@ const THEMES: Record<string, { from: string; via: string; to: string }> = {
   sunset: { from: "from-orange-900", via: "via-red-900", to: "to-black" },
   forest: { from: "from-green-900", via: "via-emerald-900", to: "to-black" },
   midnight: { from: "from-slate-900", via: "via-indigo-900", to: "to-black" },
+  abyss: { from: "from-neutral-950", via: "via-stone-950", to: "to-black" },
+};
+
+const GLOW_THEMES: Record<string, { from: string; via: string; to: string; opacity: string }> = {
+  default: { from: "from-purple-500", via: "via-pink-500", to: "to-violet-500", opacity: "opacity-40" },
+  ocean: { from: "from-blue-500", via: "via-cyan-500", to: "to-teal-500", opacity: "opacity-40" },
+  sunset: { from: "from-orange-500", via: "via-red-500", to: "to-rose-500", opacity: "opacity-40" },
+  forest: { from: "from-green-500", via: "via-emerald-500", to: "to-teal-500", opacity: "opacity-40" },
+  midnight: { from: "from-slate-500", via: "via-indigo-500", to: "to-violet-500", opacity: "opacity-40" },
+  abyss: { from: "from-neutral-800", via: "via-stone-800", to: "to-zinc-900", opacity: "opacity-20" },
 };
 
 interface Track {
@@ -73,7 +83,7 @@ export default function SwipeCard({
 
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-pink-500 to-violet-500 blur-3xl opacity-40 scale-150" />
+              <div className={`absolute inset-0 bg-gradient-to-br ${GLOW_THEMES[theme].from} ${GLOW_THEMES[theme].via} ${GLOW_THEMES[theme].to} blur-3xl ${GLOW_THEMES[theme].opacity} scale-150`} />
 
               <div className="relative w-64 h-64 rounded-2xl bg-black/30 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden transition-all duration-500 hover:scale-105">
                 <Image

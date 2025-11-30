@@ -62,14 +62,27 @@ export function useAudioPlayer() {
     }
   }, []);
 
-  const play = useCallback(() => {
+  const play = useCallback(async () => {
     if (audioRef.current) {
-      initAudioContext();
-      audioRef.current.play().then(() => {
+      try {
+        if (!audioRef.current.src) {
+          return;
+        }
+
+        initAudioContext();
+
+        if (audioContextRef.current?.state === 'suspended') {
+          await audioContextRef.current.resume();
+        }
+
+        await audioRef.current.play();
         setIsPlaying(true);
-      }).catch(err => {
-        console.error('Error playing audio:', err);
-      });
+      } catch (err: any) {
+        if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
+          console.error('Error playing audio:', err);
+        }
+        setIsPlaying(false);
+      }
     }
   }, [initAudioContext]);
 
