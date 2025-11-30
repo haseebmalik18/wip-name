@@ -1,4 +1,4 @@
-# Music Swipe App - Team Setup Guide
+# Groovy - Team Setup Guide
 
 ## 🚀 Quick Start
 
@@ -11,8 +11,8 @@
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/haseebmalik18/wip-name.git
-cd wip-name
+git clone https://github.com/haseebmalik18/groovy.git
+cd groovy
 ```
 
 ### 2. Install Dependencies
@@ -95,7 +95,7 @@ Visit `http://localhost:3000` in your browser
 ### Project Structure
 
 ```
-wip-name/
+groovy/
 ├── app/
 │   ├── api/favorites/     # Favorites API endpoints
 │   ├── favorites/         # Favorites page
@@ -118,24 +118,6 @@ wip-name/
 - `POST /api/favorites` - Add a favorite
 - `DELETE /api/favorites?userId=demo-user-123&trackId=123` - Remove favorite
 - `GET /api/favorites/check?userId=demo-user-123&trackId=123` - Check if favorited
-
-## 🎯 Current Status
-
-### ✅ Completed
-
-- Real music data from iTunes API
-- Audio playback with visualizer
-- MongoDB Atlas integration
-- Favorites system with persistence
-- Duplicate prevention
-- Real-time UI updates
-
-### 🔄 Next Steps
-
-- User authentication (Cognito/Firebase/Supabase)
-- Individual user accounts
-- User preferences and settings
-- Enhanced mobile experience
 
 ## 🐛 Troubleshooting
 
