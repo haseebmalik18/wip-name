@@ -9,6 +9,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+const THEMES: Record<string, { from: string; to: string }> = {
+  default: { from: "from-purple-900/20", to: "to-pink-900/20" },
+  ocean: { from: "from-blue-900/20", to: "to-cyan-900/20" },
+  sunset: { from: "from-orange-900/20", to: "to-red-900/20" },
+  forest: { from: "from-green-900/20", to: "to-emerald-900/20" },
+  midnight: { from: "from-slate-900/20", to: "to-indigo-900/20" },
+};
+
 export default function Home() {
   const router = useRouter();
   const { user, loading: authLoading, logout } = useAuth();
@@ -39,66 +47,78 @@ export default function Home() {
   } = useAudioPlayer();
 
   const fetchMoreTracks = useCallback(async () => {
-    if (isFetchingMore) return;
+  if (isFetchingMore || !user) return;
+  
+  setIsFetchingMore(true);
+  
+  const genres = user.favoriteGenres?.length > 0 
+    ? user.favoriteGenres 
+    : getTrendingGenres();
+  
+  const shuffledGenres = [...genres].sort(() => Math.random() - 0.5).slice(0, 3);
+  
+  const allTracks: Track[] = [];
+
+  for (const genre of shuffledGenres) {
+    const shouldFetchClassics = Math.random() > 0.5;
     
-    setIsFetchingMore(true);
-    const genres = getTrendingGenres();
+    if (shouldFetchClassics) {
+      const classics = await getPopularClassics(genre, 5);
+      const trending = await getTopChartsByGenre(genre, 5);
+      allTracks.push(...classics, ...trending);
+    } else {
+      const genreTracks = await getTopChartsByGenre(genre, 10);
+      allTracks.push(...genreTracks);
+    }
+  }
+
+  setTracks(prev => {
+    const existingIds = new Set(prev.map(t => t.id));
+    const uniqueNewTracks = allTracks.filter(track => !existingIds.has(track.id));
+    const seenIds = new Set();
+    const deduplicatedTracks = uniqueNewTracks.filter(track => {
+      if (seenIds.has(track.id)) return false;
+      seenIds.add(track.id);
+      return true;
+    });
+    const shuffled = deduplicatedTracks.sort(() => Math.random() - 0.5);
+    return [...prev, ...shuffled];
+  });
+  setIsFetchingMore(false);
+}, [isFetchingMore, user]);
+
+  useEffect(() => {
+  async function fetchMusic() {
+    if (!user) return;
+    
+    setIsLoading(true);
+    
+    const genres = user.favoriteGenres?.length > 0 
+      ? user.favoriteGenres 
+      : getTrendingGenres();
+    
     const allTracks: Track[] = [];
 
     for (const genre of genres) {
-      const shouldFetchClassics = Math.random() > 0.5;
-      
-      if (shouldFetchClassics) {
-        const classics = await getPopularClassics(genre, 5);
-        const trending = await getTopChartsByGenre(genre, 5);
-        allTracks.push(...classics, ...trending);
-      } else {
-        const genreTracks = await getTopChartsByGenre(genre, 10);
-        allTracks.push(...genreTracks);
-      }
+      const classics = await getPopularClassics(genre, 5);
+      const trending = await getTopChartsByGenre(genre, 5);
+      allTracks.push(...classics, ...trending);
     }
 
-    setTracks(prev => {
-      const existingIds = new Set(prev.map(t => t.id));
-      const uniqueNewTracks = allTracks.filter(track => !existingIds.has(track.id));
-      const seenIds = new Set();
-      const deduplicatedTracks = uniqueNewTracks.filter(track => {
-        if (seenIds.has(track.id)) return false;
-        seenIds.add(track.id);
-        return true;
-      });
-      const shuffled = deduplicatedTracks.sort(() => Math.random() - 0.5);
-      return [...prev, ...shuffled];
+    const seenIds = new Set();
+    const uniqueTracks = allTracks.filter(track => {
+      if (seenIds.has(track.id)) return false;
+      seenIds.add(track.id);
+      return true;
     });
-    setIsFetchingMore(false);
-  }, [isFetchingMore]);
 
-  useEffect(() => {
-    async function fetchMusic() {
-      setIsLoading(true);
-      const genres = getTrendingGenres();
-      const allTracks: Track[] = [];
+    const shuffled = uniqueTracks.sort(() => Math.random() - 0.5);
+    setTracks(shuffled.slice(0, 30));
+    setIsLoading(false);
+  }
 
-      for (const genre of genres) {
-        const classics = await getPopularClassics(genre, 5);
-        const trending = await getTopChartsByGenre(genre, 5);
-        allTracks.push(...classics, ...trending);
-      }
-
-      const seenIds = new Set();
-      const uniqueTracks = allTracks.filter(track => {
-        if (seenIds.has(track.id)) return false;
-        seenIds.add(track.id);
-        return true;
-      });
-
-      const shuffled = uniqueTracks.sort(() => Math.random() - 0.5);
-      setTracks(shuffled.slice(0, 30));
-      setIsLoading(false);
-    }
-
-    fetchMusic();
-  }, []);
+  fetchMusic();
+}, [user]);
 
   useEffect(() => {
     if (tracks.length > 0 && currentIndex >= tracks.length - 10 && !isFetchingMore) {
@@ -259,6 +279,8 @@ export default function Home() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
+      <div className={`absolute inset-0 bg-gradient-to-br ${THEMES[user.theme || 'default'].from} via-black ${THEMES[user.theme || 'default'].to}`} />
+      
       <div className="absolute inset-0 bg-gradient-radial from-transparent via-transparent to-black/50 pointer-events-none z-10" />
 
       <div className="absolute top-0 left-0 right-0 z-20 p-6 flex items-center justify-between backdrop-blur-sm bg-black/20">
@@ -287,7 +309,15 @@ export default function Home() {
               <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
             </svg>
           </button>
-
+          <Link
+            href="/settings"
+            className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center hover:bg-white/20 transition-all"
+            >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </Link>
           <button
             onClick={() => {
               logout();
@@ -322,6 +352,7 @@ export default function Home() {
           duration={duration}
           onSeek={seek}
           analyser={analyser}
+          theme={user.theme || 'default'}  
         />
       )}
 
@@ -358,3 +389,4 @@ export default function Home() {
     </div>
   );
 }
+

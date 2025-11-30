@@ -14,6 +14,9 @@ export async function createUser(userData: Omit<User, '_id' | 'createdAt'>): Pro
 
   const newUser: User = {
     ...userData,
+    surveyCompleted: false,  
+    favoriteGenres: [],    
+    theme: 'default',      
     createdAt: new Date(),
   };
 
@@ -47,4 +50,36 @@ export async function findUserById(userId: string): Promise<User | null> {
     ...user,
     _id: user._id?.toString(),
   };
+}
+
+export async function updateUserSurvey(userId: string, genres: string[]): Promise<void> {
+  const db = await getDatabase();
+  const usersCollection = db.collection<User>(USERS_COLLECTION);
+  const { ObjectId } = require('mongodb');
+
+  await usersCollection.updateOne(
+    { _id: new ObjectId(userId) },
+    { 
+      $set: { 
+        surveyCompleted: true, 
+        favoriteGenres: genres 
+      } 
+    }
+  );
+}
+
+export async function updateUserSettings(userId: string, genres: string[], theme: string): Promise<void> {
+  const db = await getDatabase();
+  const usersCollection = db.collection<User>(USERS_COLLECTION);
+  const { ObjectId } = require('mongodb');
+
+  await usersCollection.updateOne(
+    { _id: new ObjectId(userId) },
+    { 
+      $set: { 
+        favoriteGenres: genres,
+        theme: theme
+      } 
+    }
+  );
 }

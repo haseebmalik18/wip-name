@@ -182,3 +182,22 @@ export function getRandomGenres(): string[] {
   ];
   return genres.sort(() => Math.random() - 0.5).slice(0, 3);
 }
+
+export async function getTracksForUserGenres(genres: string[], limit: number = 20): Promise<Track[]> {
+  const allTracks: Track[] = [];
+  const tracksPerGenre = Math.ceil(limit / genres.length);
+
+  for (const genre of genres) {
+    const genreTracks = await getTopChartsByGenre(genre, tracksPerGenre);
+    allTracks.push(...genreTracks);
+  }
+
+  const seenIds = new Set();
+  const uniqueTracks = allTracks.filter(track => {
+    if (seenIds.has(track.id)) return false;
+    seenIds.add(track.id);
+    return true;
+  });
+
+  return uniqueTracks.sort(() => Math.random() - 0.5);
+}

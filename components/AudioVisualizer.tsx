@@ -5,12 +5,43 @@ import { useEffect, useRef } from 'react';
 interface AudioVisualizerProps {
   analyser: AnalyserNode | null;
   isPlaying: boolean;
+  theme?: string;
 }
 
-export default function AudioVisualizer({ analyser, isPlaying }: AudioVisualizerProps) {
+const THEME_COLORS: Record<string, { primary: number[]; secondary: number[]; tertiary: number[] }> = {
+  default: {
+    primary: [139, 92, 246],    // purple
+    secondary: [126, 34, 206],  // violet
+    tertiary: [88, 28, 135],    // dark purple
+  },
+  ocean: {
+    primary: [59, 130, 246],    // blue
+    secondary: [6, 182, 212],   // cyan
+    tertiary: [14, 116, 144],   // dark cyan
+  },
+  sunset: {
+    primary: [249, 115, 22],    // orange
+    secondary: [239, 68, 68],   // red
+    tertiary: [153, 27, 27],    // dark red
+  },
+  forest: {
+    primary: [34, 197, 94],     // green
+    secondary: [16, 185, 129],  // emerald
+    tertiary: [6, 95, 70],      // dark emerald
+  },
+  midnight: {
+    primary: [100, 116, 139],   // slate
+    secondary: [99, 102, 241],  // indigo
+    tertiary: [49, 46, 129],    // dark indigo
+  },
+};
+
+export default function AudioVisualizer({ analyser, isPlaying, theme = 'default' }: AudioVisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | undefined>(undefined);
   const phaseRef = useRef(0);
+
+  const colors = THEME_COLORS[theme] || THEME_COLORS.default;
 
   useEffect(() => {
     if (!canvasRef.current || !analyser) return;
@@ -70,9 +101,9 @@ export default function AudioVisualizer({ analyser, isPlaying }: AudioVisualizer
         ctx.closePath();
 
         const gradient = ctx.createLinearGradient(0, waveY - amplitude, 0, canvas.height);
-        gradient.addColorStop(0, `rgba(139, 92, 246, ${alpha * 0.6})`);
-        gradient.addColorStop(0.5, `rgba(126, 34, 206, ${alpha * 0.4})`);
-        gradient.addColorStop(1, `rgba(88, 28, 135, ${alpha * 0.1})`);
+        gradient.addColorStop(0, `rgba(${colors.primary.join(',')}, ${alpha * 0.6})`);
+        gradient.addColorStop(0.5, `rgba(${colors.secondary.join(',')}, ${alpha * 0.4})`);
+        gradient.addColorStop(1, `rgba(${colors.tertiary.join(',')}, ${alpha * 0.1})`);
 
         ctx.fillStyle = gradient;
         ctx.fill();
@@ -84,9 +115,9 @@ export default function AudioVisualizer({ analyser, isPlaying }: AudioVisualizer
       const centerY = canvas.height / 2;
       const glowRadius = 200 + avgValue * 100;
       const glowGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, glowRadius);
-      glowGradient.addColorStop(0, `rgba(139, 92, 246, ${avgValue * 0.08})`);
-      glowGradient.addColorStop(0.5, `rgba(126, 34, 206, ${avgValue * 0.04})`);
-      glowGradient.addColorStop(1, 'rgba(88, 28, 135, 0)');
+      glowGradient.addColorStop(0, `rgba(${colors.primary.join(',')}, ${avgValue * 0.08})`);
+      glowGradient.addColorStop(0.5, `rgba(${colors.secondary.join(',')}, ${avgValue * 0.04})`);
+      glowGradient.addColorStop(1, `rgba(${colors.tertiary.join(',')}, 0)`);
 
       ctx.beginPath();
       ctx.arc(centerX, centerY, glowRadius, 0, Math.PI * 2);
@@ -103,7 +134,7 @@ export default function AudioVisualizer({ analyser, isPlaying }: AudioVisualizer
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [analyser, isPlaying]);
+  }, [analyser, isPlaying, colors]);
 
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">

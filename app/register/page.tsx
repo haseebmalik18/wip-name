@@ -21,7 +21,7 @@ export default function RegisterPage() {
 
     try {
       await register(email, password, fullName)
-      router.push('/')
+      router.push('/survey')
     } catch (err: any) {
       setError(err.message || 'Failed to register')
       setLoading(false)

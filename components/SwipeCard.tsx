@@ -4,6 +4,14 @@ import { useEffect, useState } from 'react';
 import AudioVisualizer from './AudioVisualizer';
 import Image from 'next/image';
 
+const THEMES: Record<string, { from: string; via: string; to: string }> = {
+  default: { from: "from-purple-900", via: "via-indigo-900", to: "to-black" },
+  ocean: { from: "from-blue-900", via: "via-cyan-900", to: "to-black" },
+  sunset: { from: "from-orange-900", via: "via-red-900", to: "to-black" },
+  forest: { from: "from-green-900", via: "via-emerald-900", to: "to-black" },
+  midnight: { from: "from-slate-900", via: "via-indigo-900", to: "to-black" },
+};
+
 interface Track {
   id: number;
   title: string;
@@ -24,6 +32,7 @@ interface SwipeCardProps {
   duration: number;
   onSeek: (time: number) => void;
   analyser: AnalyserNode | null;
+  theme?: string;
 }
 
 export default function SwipeCard({
@@ -34,7 +43,8 @@ export default function SwipeCard({
   currentTime,
   duration,
   onSeek,
-  analyser
+  analyser,
+  theme = 'default'
 }: SwipeCardProps) {
   const [key, setKey] = useState(0);
 
@@ -56,11 +66,10 @@ export default function SwipeCard({
         key={key}
         className="relative w-full h-full select-none animate-slideIn"
       >
-        <div className="relative w-full h-full bg-gradient-to-br from-purple-900 via-indigo-900 to-black overflow-hidden">
-          <div className="absolute inset-0 bg-black/10" />
+<div className={`relative w-full h-full bg-gradient-to-br ${THEMES[theme].from} ${THEMES[theme].via} ${THEMES[theme].to} overflow-hidden`}>          <div className="absolute inset-0 bg-black/10" />
           <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none" />
 
-          <AudioVisualizer analyser={analyser} isPlaying={isPlaying} />
+          <AudioVisualizer analyser={analyser} isPlaying={isPlaying} theme={theme} />
 
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="relative">

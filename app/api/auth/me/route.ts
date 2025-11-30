@@ -33,12 +33,15 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      user: {
-        id: user._id,
-        email: user.email,
-        fullName: user.fullName,
-      },
-    });
+    user: {
+    id: user._id,
+    email: user.email,
+    fullName: user.fullName,
+    surveyCompleted: user.surveyCompleted ?? false,
+    favoriteGenres: user.favoriteGenres ?? [],
+    theme: user.theme ?? 'default',
+  },
+});
   } catch (error) {
     console.error('Get user error:', error);
     return NextResponse.json(

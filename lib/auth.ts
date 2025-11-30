@@ -8,6 +8,9 @@ export interface User {
   email: string;
   fullName: string;
   password: string;
+  surveyCompleted: boolean;   
+  favoriteGenres: string[]; 
+  theme: string;  
   createdAt: Date;
 }
 
