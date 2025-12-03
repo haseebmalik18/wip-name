@@ -4,6 +4,7 @@ export function useAudioPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -108,15 +109,31 @@ export function useAudioPlayer() {
     }
   }, []);
 
+  const changeVolume = useCallback((newVolume: number) => {
+    const clampedVolume = Math.max(0, Math.min(1, newVolume));
+    setVolume(clampedVolume);
+    if (audioRef.current) {
+      audioRef.current.volume = clampedVolume;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
+    }
+  }, [volume]);
+
   return {
     isPlaying,
     currentTime,
     duration,
+    volume,
     loadTrack,
     play,
     pause,
     togglePlayPause,
     seek,
+    changeVolume,
     analyser: analyserRef.current,
     audioContext: audioContextRef.current,
   };

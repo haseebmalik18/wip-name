@@ -29,9 +29,11 @@ export default function Home() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const fetchOffsetRef = useRef(0);
   const isScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const tracksRef = useRef<Track[]>([]);
 
   const { favorites, addFavorite, removeFavorite, isFavorite } = useFavorites(userId);
 
@@ -39,9 +41,11 @@ export default function Home() {
     isPlaying,
     currentTime,
     duration,
+    volume,
     loadTrack,
     togglePlayPause,
     seek,
+    changeVolume,
     analyser,
     pause,
     play
@@ -50,7 +54,11 @@ export default function Home() {
   const fetchMoreTracks = useCallback(async () => {
   if (isFetchingMore || !user) return;
 
+  console.log('🔄 Fetching more tracks...');
   setIsFetchingMore(true);
+
+  fetchOffsetRef.current += 1;
+  const currentOffset = fetchOffsetRef.current;
 
   const userGenres = user.favoriteGenres?.length > 0
     ? user.favoriteGenres
@@ -60,14 +68,20 @@ export default function Home() {
     ? [...userGenres].sort(() => Math.random() - 0.5).slice(0, 3)
     : userGenres;
 
+  console.log(`🎵 Fetch more - Genres: ${genresToFetch}, Offset: ${currentOffset}`);
+
   const allTracks: Track[] = [];
 
   for (const genre of genresToFetch) {
+    const trendingOffset = currentOffset * 27;
+    const classicsOffset = currentOffset * 23;
+
     const [classics, trending] = await Promise.all([
-      getPopularClassics(genre, 23, false),
-      getTopChartsByGenre(genre, 27),
+      getPopularClassics(genre, 23, true, classicsOffset),
+      getTopChartsByGenre(genre, 27, trendingOffset),
     ]);
 
+    console.log(`📀 ${genre}: ${classics.length} classics + ${trending.length} trending = ${classics.length + trending.length} total (offset: ${currentOffset})`);
     allTracks.push(...classics, ...trending);
   }
 
@@ -81,6 +95,7 @@ export default function Home() {
       return true;
     });
     const shuffled = deduplicatedTracks.sort(() => Math.random() - 0.5);
+    console.log(`➕ Adding ${shuffled.length} new unique tracks (had ${prev.length}, now ${prev.length + shuffled.length})`);
     return [...prev, ...shuffled];
   });
   setIsFetchingMore(false);
@@ -91,6 +106,7 @@ export default function Home() {
     if (!user) return;
 
     setIsLoading(true);
+    fetchOffsetRef.current = 0;
 
     const userGenres = user.favoriteGenres?.length > 0
       ? user.favoriteGenres
@@ -100,14 +116,17 @@ export default function Home() {
       ? [...userGenres].sort(() => Math.random() - 0.5).slice(0, 3)
       : userGenres;
 
+    console.log('🎵 Initial fetch - Genres:', genresToFetch);
+
     const allTracks: Track[] = [];
 
     for (const genre of genresToFetch) {
       const [classics, trending] = await Promise.all([
-        getPopularClassics(genre, 23, false),
-        getTopChartsByGenre(genre, 27),
+        getPopularClassics(genre, 23, true, 0),
+        getTopChartsByGenre(genre, 27, 0),
       ]);
 
+      console.log(`📀 ${genre}: ${classics.length} classics + ${trending.length} trending = ${classics.length + trending.length} total`);
       allTracks.push(...classics, ...trending);
     }
 
@@ -117,6 +136,8 @@ export default function Home() {
       seenIds.add(track.id);
       return true;
     });
+
+    console.log(`✅ Total tracks fetched: ${allTracks.length}, Unique: ${uniqueTracks.length}`);
 
     const shuffled = uniqueTracks.sort(() => Math.random() - 0.5);
     setTracks(shuffled);
@@ -128,6 +149,7 @@ export default function Home() {
 
   useEffect(() => {
     if (tracks.length > 0 && currentIndex >= tracks.length - 10 && !isFetchingMore) {
+      console.log(`🎯 Near end: currentIndex=${currentIndex}, tracks.length=${tracks.length}, triggering fetch`);
       fetchMoreTracks();
     }
   }, [currentIndex, tracks.length, isFetchingMore, fetchMoreTracks]);
@@ -159,16 +181,19 @@ export default function Home() {
     }
   };
 
+  useEffect(() => {
+    tracksRef.current = tracks;
+  }, [tracks]);
+
   const goToNext = useCallback(() => {
     setDirection('down');
     setCurrentIndex((prev) => {
-      if (prev < tracks.length - 1) {
-        return prev + 1;
-      }
-      return 0;
+      const next = prev < tracksRef.current.length - 1 ? prev + 1 : 0;
+      console.log('⬇️ Index:', prev, '→', next, '| Total tracks:', tracksRef.current.length);
+      return next;
     });
     setShowHint(false);
-  }, [tracks.length]);
+  }, []);
 
   const goToPrevious = useCallback(() => {
     setDirection('up');
@@ -176,12 +201,17 @@ export default function Home() {
       if (prev > 0) {
         return prev - 1;
       }
-      return Math.max(0, tracks.length - 1);
+      return Math.max(0, tracksRef.current.length - 1);
     });
     setShowHint(false);
-  }, [tracks.length]);
+  }, []);
 
   useEffect(() => {
+    if (isLoading) return;
+
+    const container = containerRef.current;
+    if (!container) return;
+
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
 
@@ -203,20 +233,17 @@ export default function Home() {
       }, 600);
     };
 
-    const container = containerRef.current;
-    if (container) {
-      container.addEventListener('wheel', handleWheel, { passive: false });
-    }
+    console.log('🔧 Setting up wheel listener');
+    container.addEventListener('wheel', handleWheel, { passive: false });
 
     return () => {
-      if (container) {
-        container.removeEventListener('wheel', handleWheel);
-      }
+      console.log('🧹 Cleaning up wheel listener');
+      container.removeEventListener('wheel', handleWheel);
       if (scrollTimeoutRef.current !== null) {
         clearTimeout(scrollTimeoutRef.current);
       }
     };
-  }, [goToNext, goToPrevious]);
+  }, [isLoading, goToNext, goToPrevious]);
 
   const touchStartY = useRef(0);
   const touchEndY = useRef(0);
@@ -362,7 +389,9 @@ export default function Home() {
           duration={duration}
           onSeek={seek}
           analyser={analyser}
-          theme={user.theme || 'default'}  
+          theme={user.theme || 'default'}
+          volume={volume}
+          onVolumeChange={changeVolume}
         />
       )}
 

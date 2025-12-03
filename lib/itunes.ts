@@ -24,20 +24,19 @@ const GENRE_IDS: Record<string, number> = {
   'Latin': 12,
 };
 
-const POPULAR_GENRES = ['Pop', 'Hip-Hop/Rap', 'Electronic', 'R&B/Soul', 'Alternative', 'Dance'];
+const POPULAR_GENRES = ['Pop', 'Hip-Hop/Rap', 'Electronic', 'R&B/Soul', 'Alternative', 'Dance', 'Latin', 'Indie'];
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export async function getTopChartsByGenre(genreName: string, limit: number = 10): Promise<Track[]> {
+export async function getTopChartsByGenre(genreName: string, limit: number = 10, offset: number = 0): Promise<Track[]> {
   try {
     const genreId = GENRE_IDS[genreName];
     if (!genreId) {
       return [];
     }
 
-    const chartLimit = Math.min(100, Math.max(limit * 3, 30));
     const response = await fetch(
-      `https://itunes.apple.com/us/rss/topsongs/limit=${chartLimit}/genre=${genreId}/json`
+      `https://itunes.apple.com/us/rss/topsongs/limit=100/genre=${genreId}/json`
     );
 
     if (!response.ok) {
@@ -47,9 +46,20 @@ export async function getTopChartsByGenre(genreName: string, limit: number = 10)
     const data = await response.json();
     let entries = data.feed?.entry || [];
 
-    entries = entries.sort(() => Math.random() - 0.5).slice(0, limit);
+    const startIndex = offset % entries.length;
+    const endIndex = Math.min(startIndex + limit, entries.length);
 
-    const tracks = entries.map((entry: any) => {
+    let selectedEntries;
+    if (endIndex - startIndex >= limit) {
+      selectedEntries = entries.slice(startIndex, endIndex);
+    } else {
+      const firstPart = entries.slice(startIndex);
+      const remaining = limit - firstPart.length;
+      const secondPart = entries.slice(0, remaining);
+      selectedEntries = [...firstPart, ...secondPart];
+    }
+
+    const tracks = selectedEntries.map((entry: any) => {
       try {
         const trackId = entry.id.attributes['im:id'];
         const previewUrl = entry.link?.find((link: any) => link.attributes?.type === 'audio/x-m4a')?.attributes?.href;
@@ -84,7 +94,7 @@ export function getTrendingGenres(): string[] {
   return POPULAR_GENRES.sort(() => Math.random() - 0.5).slice(0, 3);
 }
 
-export async function getPopularClassics(genreName: string, limit: number = 10, randomize: boolean = true): Promise<Track[]> {
+export async function getPopularClassics(genreName: string, limit: number = 10, randomize: boolean = true, offset: number = 0): Promise<Track[]> {
   try {
     const genreId = GENRE_IDS[genreName];
     if (!genreId) {
@@ -112,7 +122,9 @@ export async function getPopularClassics(genreName: string, limit: number = 10, 
     const numArtists = Math.min(Math.ceil(limit / 3), artists.length);
     const tracksPerArtist = Math.ceil(limit / numArtists);
 
-    const shuffledArtists = [...artists].sort(() => Math.random() - 0.5);
+    const artistOffset = Math.floor(offset / 5) % artists.length;
+    const rotatedArtists = [...artists.slice(artistOffset), ...artists.slice(0, artistOffset)];
+    const shuffledArtists = randomize ? rotatedArtists.sort(() => Math.random() - 0.5) : rotatedArtists;
     const selectedArtists = shuffledArtists.slice(0, numArtists);
 
     const allTracks: any[] = [];
@@ -130,7 +142,11 @@ export async function getPopularClassics(genreName: string, limit: number = 10, 
 
       const data = await response.json();
 
-      const availableTracks = data.results.filter((item: any) => item.previewUrl);
+      const availableTracks = data.results.filter((item: any) => {
+        if (!item.previewUrl) return false;
+        const artistMatch = item.artistName.toLowerCase().includes(artist.toLowerCase());
+        return artistMatch;
+      });
 
       let selectedTracks;
       if (randomize) {

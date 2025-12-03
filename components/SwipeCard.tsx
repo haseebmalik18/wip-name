@@ -43,6 +43,8 @@ interface SwipeCardProps {
   onSeek: (time: number) => void;
   analyser: AnalyserNode | null;
   theme?: string;
+  volume: number;
+  onVolumeChange: (volume: number) => void;
 }
 
 export default function SwipeCard({
@@ -54,7 +56,9 @@ export default function SwipeCard({
   duration,
   onSeek,
   analyser,
-  theme = 'default'
+  theme = 'default',
+  volume,
+  onVolumeChange
 }: SwipeCardProps) {
   const [key, setKey] = useState(0);
 
@@ -157,6 +161,7 @@ export default function SwipeCard({
                   {formatTime(currentTime)} / {formatTime(duration)}
                 </span>
               </div>
+
             </div>
           </div>
         </div>
